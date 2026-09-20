@@ -65,44 +65,49 @@ jobs:
       - run: docker build -t settled-computer .
       - name: Boot server, verify MCP introspection
         run: |
-          docker run -d --name sc settled-computer
-          sleep 5
-          if ! docker ps --format '{{.Names}}' | grep -qx sc; then
-            echo "=== container died; logs: ==="
-            docker logs sc 2>&1 | tail -30
-            exit 1
-          fi
           python3 - <<'EOF'
           import json, subprocess
 
+          # Foreground (-i): an MCP stdio server exits silently when stdin closes,
+          # so the container must be driven over its own stdin/stdout.
           p = subprocess.Popen(
-              ["docker", "exec", "-i", "sc", "settled-computer"],
-              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+              ["docker", "run", "--rm", "-i", "settled-computer"],
+              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
           def send(msg):
               p.stdin.write((json.dumps(msg) + "\n").encode())
               p.stdin.flush()
 
-          send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                           "clientInfo": {"name": "ci", "version": "0"}}})
-          line = p.stdout.readline()
-          assert b"serverInfo" in line, f"no initialize response: {line[:300]}"
+          def die(msg):
+              p.terminate()
+              print(msg)
+              print("stderr:", p.stderr.read().decode()[-2000:])
+              raise SystemExit(1)
 
-          send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-          send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-          tools_line = None
-          for _ in range(5):  # skip any interleaved notifications
+          try:
+              send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                    "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                               "clientInfo": {"name": "ci", "version": "0"}}})
               line = p.stdout.readline()
-              if b'"tools"' in line:
-                  tools_line = line
-                  break
-          assert tools_line, "no tools/list response"
-          names = [t.get("name") for t in json.loads(tools_line)["result"]["tools"]]
-          print(f"containerized server OK: {len(names)} tools: {names}")
-          assert len(names) == 11
+              if b"serverInfo" not in line:
+                  die(f"no initialize response: {line[:300]}")
+
+              send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+              send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+              tools_line = None
+              for _ in range(5):  # skip interleaved notifications
+                  line = p.stdout.readline()
+                  if b'"tools"' in line:
+                      tools_line = line
+                      break
+              if not tools_line:
+                  die("no tools/list response")
+              names = [t.get("name") for t in json.loads(tools_line)["result"]["tools"]]
+              print(f"containerized server OK: {len(names)} tools: {names}")
+              assert len(names) == 11, names
+          finally:
+              p.terminate()
           EOF
-          docker rm -f sc >/dev/null
 
   build:
     runs-on: ubuntu-latest
