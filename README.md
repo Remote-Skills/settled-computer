@@ -1,5 +1,9 @@
 # settled-computer
 
+**Fast computer use for AI agents.** If your computer-use agent types `time.sleep(2)` between
+every click, re-screenshots after every action, and burns vision tokens re-reading an unchanged
+screen — that's the problem this fixes.
+
 An MCP server for desktop computer use with **event-driven settling**: every action waits
 until the screen actually reacts and stops changing, then returns the settled screenshot and
 a one-line verdict. No fixed sleeps, no separate screenshot round trips, no model-side guessing
@@ -10,7 +14,7 @@ Built for agent loops (Hermes, Claude Desktop, Claude Code, any MCP host). The c
 so the model doesn't need an extra vision turn just to find out when it is safe to look.**
 Whether the reaction was the *right* one is still the model's job: judge by the image.
 
-## Why
+## Why your computer-use agent is slow (and how this fixes it)
 
 Naive computer-use loops look like this:
 
@@ -85,6 +89,19 @@ with no feedback signal.
   still animating it is re-activated immediately, if not it simply expires.
 - **A spinner is not decoration.** The residual note says everything outside the region is stable
   and tells the model to call `wait()` if that region is what it is waiting for.
+
+## Comparison with alternatives
+
+| | settled-computer | naive sleep loop | native per-call drivers (e.g. cua-driver) |
+|---|---|---|---|
+| waits between actions | measured (frame diff, 20 Hz) | guessed `time.sleep` | none — model re-screenshots to check |
+| images per action | 1 (0 when unchanged) | 1–3 | 1 + verification shots |
+| model turns for 3 actions | **1** (`act()` batch) | 6+ | 7+ |
+| learns your machine | yes (per-action `max_wait`) | no | no |
+| video/spinner handling | 1.5 s bail + region hint | stalls forever | stalls or false-settles |
+
+Not a replacement for the action layer (it *uses* pyautogui) — it replaces the guesswork
+around it. Works alongside any MCP host: Claude Desktop, Claude Code, Hermes, custom loops.
 
 ## Safety — read this first
 

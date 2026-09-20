@@ -4,13 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "settled-computer"
-version = "0.1.0a1"
-description = "MCP server for desktop computer use with event-driven settling: every action waits until the screen reacts and stops changing, then returns the settled screenshot."
+version = "0.1.0a2"
+description = "MCP server for fast computer use agents: event-driven settling replaces time.sleep between actions - the server watches the screen, waits for the UI to react and stop changing, and returns the settled screenshot. No blind waits, no wasted vision turns."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Chiheb" }]
-keywords = ["mcp", "computer-use", "agent", "automation", "screen-capture", "settle"]
+keywords = [
+    "mcp", "mcp-server", "computer-use", "computer-use-agent", "gui-agent",
+    "desktop-automation", "screen-capture", "screenshot", "pyautogui",
+    "agent", "automation", "latency", "slow-agent", "fast", "sleep",
+    "wait", "settle", "vision", "claude", "hermes",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
