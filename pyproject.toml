@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "settled-computer"
+version = "0.1.0a1"
+description = "MCP server for desktop computer use with event-driven settling: every action waits until the screen reacts and stops changing, then returns the settled screenshot."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Chiheb" }]
+keywords = ["mcp", "computer-use", "agent", "automation", "screen-capture", "settle"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+# mss is desktop-capture; on macOS/Linux it may be absent but the engine's
+# selftest and browser grabbers still work without a display. Keep core lean.
+dependencies = [
+    "numpy>=1.24,<3",
+    "mcp>=1.2,<3",
+]
+
+[project.optional-dependencies]
+# desktop actions + capture (what the MCP server needs on a real desktop)
+desktop = [
+    "mss>=9,<11",
+    "pyautogui>=0.9.14,<1",
+    "pillow>=10,<12",
+]
+# ~3x faster JPEG encode than the PIL fallback
+fast = ["opencv-python>=4.8,<5"]
+# non-ASCII typing (pastes via clipboard)
+unicode = ["pyperclip>=1.8,<2"]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/chihebnabi/settled-computer"
+Issues = "https://github.com/chihebnabi/settled-computer/issues"
+
+[project.scripts]
+settled-computer = "settled_computer.server:main"
+
+[tool.setuptools]
+packages = ["settled_computer"]

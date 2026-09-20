@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  selftest:
+    # The engine self-test is pure numpy + a synthetic screen: runs anywhere, no display.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy
+      - run: python settled_computer/engine.py --selftest
+
+  linux-xvfb-e2e:
+    # Full server end-to-end on a virtual display: import, tool listing, allowlist,
+    # and the MCP stdio round trip (screen_info). Real input injection stays manual.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk xvfb scrot
+      - run: pip install -e ".[desktop,fast,unicode]" pytest
+      - name: Selftest under Xvfb
+        run: xvfb-run -a python settled_computer/engine.py --selftest
+      - name: Server imports, registers tools, allowlist gates
+        run: |
+          xvfb-run -a python - <<'EOF'
+          import os, asyncio
+          os.environ["SETTLE_MCP_TOOLS"] = "screenshot,screen_info,wait"
+          import settled_computer.server as srv
+          tools = asyncio.run(srv.mcp.list_tools())
+          assert len(tools) == 11, tools
+          async def t():
+              try:
+                  await srv.click(x=10, y=10)
+                  raise AssertionError("click should have been blocked")
+              except Exception as e:
+                  assert "allowlist" in str(e), e
+              await srv.screen_info()
+          asyncio.run(t())
+          print("linux xvfb e2e OK")
+          EOF
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
