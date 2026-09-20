@@ -14,4 +14,5 @@ RUN pip install --no-cache-dir "settled-computer[desktop]"
 
 ENV DISPLAY=:99
 
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp & sleep 1; exec settled-computer"]
+# mss insists on an Xauthority file even for an unauthenticated Xvfb display.
+CMD ["sh", "-c", "touch /root/.Xauthority; Xvfb :99 -screen 0 1280x720x24 -nolisten tcp & sleep 1; exec settled-computer"]
