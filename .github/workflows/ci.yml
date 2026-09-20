@@ -67,6 +67,11 @@ jobs:
         run: |
           docker run -d --name sc settled-computer
           sleep 5
+          if ! docker ps --format '{{.Names}}' | grep -qx sc; then
+            echo "=== container died; logs: ==="
+            docker logs sc 2>&1 | tail -30
+            exit 1
+          fi
           python3 - <<'EOF'
           import json, subprocess
 
